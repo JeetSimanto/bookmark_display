@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Booktab",
+  "version": "1.0.0",
+  "description": "A maximalist, neo-brutalist New Tab workspace dashboard with bookmarks, widgets, and explosive aesthetics.",
+  "permissions": [
+    "storage",
+    "favicon"
+  ],
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  }
+}

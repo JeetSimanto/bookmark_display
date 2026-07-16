@@ -1,0 +1,70 @@
+/* ============================================================
+   MAXIMALIST DESIGN TOKENS — BOOKTAB
+   Neo-Brutalist / Retro-Web / Maximalist Aesthetic
+   ============================================================ */
+
+:root {
+  /* ── CORE STRUCTURE COLORS ──────────────────────────────── */
+  --color-black: #000000;
+  --color-white: #FFFFFF;
+
+  /* ── PRIMARY ACCENT COLORS (The "Neon" Set) ─────────────── */
+  --color-yellow: #FFDE4D;
+  --color-magenta: #FF007F;
+  --color-blue: #003BFF;
+  --color-green: #00FF41;
+  --color-orange: #FF5722;
+
+  /* ── DERIVED / SURFACE COLORS ───────────────────────────── */
+  --color-bg-page: #F0E6D3;
+  --color-bg-card: var(--color-white);
+  --color-text-primary: var(--color-black);
+  --color-text-inverse: var(--color-white);
+
+  /* ── BORDERS (The Outline) ──────────────────────────────── */
+  --border-thick: 4px solid var(--color-black);
+  --border-thin: 2px solid var(--color-black);
+
+  /* ── SHADOWS (Neo-Brutalist Solid Drop) ─────────────────── */
+  --shadow-brutal: 6px 6px 0px 0px var(--color-black);
+  --shadow-brutal-sm: 4px 4px 0px 0px var(--color-black);
+  --shadow-brutal-hover: 8px 8px 0px 0px var(--color-black);
+  --shadow-none: 0px 0px 0px 0px var(--color-black);
+
+  /* ── TYPOGRAPHY ─────────────────────────────────────────── */
+  /* Display & Headers */
+  --font-display: Impact, 'Arial Black', sans-serif;
+  --font-weight-display: normal;
+  --letter-spacing-display: 0.5px;
+
+  /* Monospace / Data */
+  --font-mono: 'Courier New', Consolas, Monaco, monospace;
+  --font-weight-mono: 700;
+
+  /* Base UI & Links */
+  --font-ui: Arial, 'Helvetica Neue', sans-serif;
+  --font-weight-ui: 700;
+  --font-weight-ui-heavy: 900;
+
+  /* ── SPACING ────────────────────────────────────────────── */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /* ── BORDER RADIUS (NONE — Sharp Corners!) ──────────────── */
+  --radius: 0px;
+
+  /* ── TRANSITIONS ────────────────────────────────────────── */
+  --transition-snap: all 0.1s ease;
+  --transition-smooth: all 0.2s ease;
+
+  /* ── CARD ACCENT PALETTE (cycling for collections) ──────── */
+  --accent-1: var(--color-yellow);
+  --accent-2: var(--color-magenta);
+  --accent-3: var(--color-blue);
+  --accent-4: var(--color-green);
+  --accent-5: var(--color-orange);
+}
