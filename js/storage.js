@@ -72,18 +72,36 @@ const StorageController = (() => {
     Object.keys(state.workspaces).forEach(wsKey => {
       const ws = state.workspaces[wsKey];
       if (!ws.collections) ws.collections = [];
+      
+      // Ensure all collections have stable IDs
       ws.collections.forEach((col, idx) => {
         if (!col.id) {
-          col.id = `col_${wsKey}_${idx}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          col.id = `col_${wsKey}_${idx}_${Math.random().toString(36).substring(2, 7)}`;
         }
       });
+
+      const validIds = new Set([
+        ...ws.collections.map(c => `collection-${c.id}`),
+        "widget-clock",
+        "widget-todo",
+        "widget-ai-sites"
+      ]);
+
       if (!ws.layout) {
-        ws.layout = [
-          ...ws.collections.map(c => `collection-${c.id}`),
-          "widget-clock",
-          "widget-todo",
-          "widget-ai-sites"
-        ];
+        ws.layout = Array.from(validIds);
+      } else {
+        // Filter out IDs that are no longer valid (e.g. deleted collections)
+        let filteredLayout = ws.layout.filter(id => validIds.has(id));
+        
+        // Append any valid IDs that are missing from the layout (e.g. new collections/widgets)
+        const existingSet = new Set(filteredLayout);
+        validIds.forEach(id => {
+          if (!existingSet.has(id)) {
+            filteredLayout.push(id);
+          }
+        });
+        
+        ws.layout = filteredLayout;
       }
     });
     return state;
@@ -96,11 +114,18 @@ const StorageController = (() => {
   async function loadState() {
     if (isChromeExtension()) {
       return new Promise((resolve) => {
-        chrome.storage.local.get(['booktabState'], (result) => {
+        chrome.storage.local.get(['booktabState'], async (result) => {
           if (result.booktabState) {
-            resolve(normalizeState(result.booktabState));
+            const originalStr = JSON.stringify(result.booktabState);
+            const normalized = normalizeState(result.booktabState);
+            if (JSON.stringify(normalized) !== originalStr) {
+              await saveState(normalized);
+            }
+            resolve(normalized);
           } else {
-            resolve(normalizeState(structuredClone(DEFAULT_STATE)));
+            const defaultState = normalizeState(structuredClone(DEFAULT_STATE));
+            await saveState(defaultState);
+            resolve(defaultState);
           }
         });
       });
@@ -109,12 +134,22 @@ const StorageController = (() => {
       const raw = localStorage.getItem('booktabState');
       if (raw) {
         try {
-          return normalizeState(JSON.parse(raw));
+          const parsed = JSON.parse(raw);
+          const originalStr = JSON.stringify(parsed);
+          const normalized = normalizeState(parsed);
+          if (JSON.stringify(normalized) !== originalStr) {
+            await saveState(normalized);
+          }
+          return normalized;
         } catch {
-          return normalizeState(structuredClone(DEFAULT_STATE));
+          const defaultState = normalizeState(structuredClone(DEFAULT_STATE));
+          await saveState(defaultState);
+          return defaultState;
         }
       }
-      return normalizeState(structuredClone(DEFAULT_STATE));
+      const defaultState = normalizeState(structuredClone(DEFAULT_STATE));
+      await saveState(defaultState);
+      return defaultState;
     }
   }
 

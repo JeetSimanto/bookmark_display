@@ -109,11 +109,27 @@ const LayoutEngine = (() => {
     const grid = document.getElementById('main-grid');
     if (!grid) return;
 
+    let dragAllowed = false;
+
+    // Track where the mouse is pressed to determine if dragging should be allowed
+    grid.addEventListener('mousedown', (e) => {
+      const isHeader = e.target.closest('.card-header');
+      const isClock = e.target.closest('.widget-clock');
+      
+      // Do not allow dragging from inputs, buttons, links, or labels
+      const tag = e.target.tagName;
+      const isInput = tag === 'INPUT' || tag === 'BUTTON' || tag === 'A' || tag === 'LABEL';
+
+      if ((isHeader || isClock) && !isInput) {
+        dragAllowed = true;
+      } else {
+        dragAllowed = false;
+      }
+    });
+
     // -- DRAG START --
     grid.addEventListener('dragstart', (e) => {
-      // Don't drag from inputs, buttons, links, or checkboxes
-      const tag = e.target.tagName;
-      if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'A' || tag === 'LABEL') {
+      if (!dragAllowed) {
         e.preventDefault();
         return;
       }
@@ -138,7 +154,7 @@ const LayoutEngine = (() => {
       if (!draggedEl) return;
       e.dataTransfer.dropEffect = 'move';
 
-      const afterElement = getDragAfterElement(grid, e.clientY);
+      const target = getDragPosition(grid, e.clientX, e.clientY);
       const addBtn = document.getElementById('add-collection-btn');
 
       // Remove existing placeholder
@@ -147,8 +163,12 @@ const LayoutEngine = (() => {
       }
       placeholder = createPlaceholder();
 
-      if (afterElement && afterElement !== draggedEl) {
-        grid.insertBefore(placeholder, afterElement);
+      if (target) {
+        if (target.insertAfter) {
+          grid.insertBefore(placeholder, target.element.nextSibling);
+        } else {
+          grid.insertBefore(placeholder, target.element);
+        }
       } else if (addBtn) {
         grid.insertBefore(placeholder, addBtn);
       } else {
@@ -198,26 +218,37 @@ const LayoutEngine = (() => {
   }
 
   /**
-   * Determine which card the dragged element should be placed before.
-   * Uses vertical midpoint comparison for a natural top-to-bottom feel.
+   * Determine which card the dragged element is closest to and whether
+   * we should drop before or after it, using 2D Euclidean distance.
    */
-  function getDragAfterElement(container, y) {
+  function getDragPosition(container, x, y) {
     const draggableElements = [
       ...container.querySelectorAll(
         '.collection-card:not(.dragging), .widget-clock:not(.dragging), .widget-todo:not(.dragging), .widget-ai-sites:not(.dragging)'
       )
     ];
 
-    return draggableElements.reduce((closest, child) => {
-      const box = child.getBoundingClientRect();
-      const offset = y - box.top - box.height / 2;
+    let closestElement = null;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    let insertAfter = false;
 
-      // We want the element whose midpoint is just BELOW the cursor
-      if (offset < 0 && offset > closest.offset) {
-        return { offset, element: child };
+    draggableElements.forEach(child => {
+      const box = child.getBoundingClientRect();
+      const centerX = box.left + box.width / 2;
+      const centerY = box.top + box.height / 2;
+      
+      const dx = x - centerX;
+      const dy = y - centerY;
+      const distance = dx * dx + dy * dy;
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestElement = child;
+        insertAfter = x > centerX;
       }
-      return closest;
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
+    });
+
+    return closestElement ? { element: closestElement, insertAfter } : null;
   }
 
   /**

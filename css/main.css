@@ -225,6 +225,11 @@ body {
   padding: var(--space-sm) var(--space-md);
   background: var(--color-yellow);
   border-bottom: var(--border-thick);
+  cursor: grab;
+}
+
+.card-header:active {
+  cursor: grabbing;
 }
 
 .card-header[data-accent="1"] { background: var(--accent-1); }
@@ -427,18 +432,24 @@ body {
   color: var(--color-green);
   border: var(--border-thick);
   box-shadow: var(--shadow-brutal);
-  padding: var(--space-lg) var(--space-xl);
+  padding: var(--space-lg) var(--space-md);
   text-align: center;
+  cursor: grab;
+}
+
+.widget-clock:active {
+  cursor: grabbing;
 }
 
 .clock-time {
   font-family: var(--font-display);
   font-weight: var(--font-weight-display);
-  font-size: 3.5rem;
+  font-size: 2.2rem;
   letter-spacing: 2px;
   text-transform: uppercase;
   line-height: 1;
   text-shadow: 0 0 20px var(--color-green);
+  white-space: nowrap;
 }
 
 .clock-date {

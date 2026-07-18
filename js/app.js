@@ -45,7 +45,9 @@ async function bootApp() {
  */
 function onWorkspaceChange(appState) {
   LayoutEngine.setState(appState);
-  BookmarksEngine.init(appState);
+  BookmarksEngine.init(appState, () => {
+    LayoutEngine.applyLayout();
+  });
 }
 
 /**
@@ -73,9 +75,19 @@ function initSearch() {
 
   // Focus search bar with keyboard shortcut
   document.addEventListener('keydown', (e) => {
-    if (e.key === '/' && document.activeElement !== searchBar) {
-      e.preventDefault();
-      searchBar.focus();
+    if (e.key === '/') {
+      const activeEl = document.activeElement;
+      if (activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.isContentEditable
+      )) {
+        return;
+      }
+      if (activeEl !== searchBar) {
+        e.preventDefault();
+        searchBar.focus();
+      }
     }
   });
 }
