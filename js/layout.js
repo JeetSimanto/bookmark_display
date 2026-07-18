@@ -1,272 +1,192 @@
 /* ============================================================
-   LAYOUT.JS — Card Layout & Drag and Drop Engine
-   Handles reordering dashboard cards and persisting layout state
-   Uses HTML5 Drag and Drop API with draggable attribute
+   LAYOUT.JS — Free-Form Drag Engine
+   Desktop-style free positioning — drag any card anywhere
+   Uses mouse events for pixel-perfect placement
    ============================================================ */
 
 import StorageController from './storage.js';
 
 const LayoutEngine = (() => {
   let appState = null;
-  let draggedEl = null;
-  let placeholder = null;
+  let zCounter = 100;
 
-  /**
-   * Initialize layout sorting and drag & drop listeners
-   * @param {Object} state - The loaded app state
-   */
+  const CARD_SEL = '.collection-card, .widget-clock, .widget-todo, .widget-ai-sites, .add-collection-btn';
+  const DRAG_THRESHOLD = 5;
+  const CARD_W = 340;
+  const GAP = 24;
+  const ROW_H = 300;
+
   function init(state) {
     appState = state;
     applyLayout();
-    setupDragAndDrop();
+    setupDrag();
   }
 
-  /**
-   * Update state reference (called on workspace switch)
-   */
   function setState(state) {
     appState = state;
   }
 
   /**
-   * Make all grid children draggable
-   */
-  function makeDraggable() {
-    const grid = document.getElementById('main-grid');
-    if (!grid) return;
-
-    const cards = grid.querySelectorAll('.collection-card, .widget-clock, .widget-todo, .widget-ai-sites');
-    cards.forEach(card => {
-      card.setAttribute('draggable', 'true');
-    });
-  }
-
-  /**
-   * Reorder elements in the DOM to match active workspace's layout state
+   * Position all cards from saved state (or calculate defaults)
    */
   function applyLayout() {
     const grid = document.getElementById('main-grid');
     if (!grid || !appState) return;
 
-    const workspace = appState.workspaces[appState.activeWorkspace];
-    if (!workspace || !workspace.layout) return;
+    const ws = appState.workspaces[appState.activeWorkspace];
+    if (!ws) return;
 
-    // Get all cards currently in the DOM
-    const cards = Array.from(grid.querySelectorAll('.collection-card, .widget-clock, .widget-todo, .widget-ai-sites'));
-    const addBtn = document.getElementById('add-collection-btn');
+    // Migrate old array layout to empty object
+    if (Array.isArray(ws.layout)) ws.layout = {};
+    if (!ws.layout || typeof ws.layout !== 'object') ws.layout = {};
+    const pos = ws.layout;
 
-    // Create a map of data-id to card element
-    const cardMap = new Map();
+    const cards = Array.from(grid.querySelectorAll(CARD_SEL));
+    // Use window width minus padding for reliable column count
+    const containerW = window.innerWidth - 80;
+    const cols = Math.max(1, Math.floor(containerW / (CARD_W + GAP)));
+
+    // Track actual row bottoms for staggered placement (cards have variable height)
+    const colBottoms = new Array(cols).fill(0);
+
     cards.forEach(card => {
-      const dataId = card.getAttribute('data-id');
-      if (dataId) {
-        cardMap.set(dataId, card);
+      const id = card.getAttribute('data-id');
+      if (!id) return;
+      card.setAttribute('draggable', 'false');
+
+      const saved = pos[id];
+      if (saved && (saved.x > 0 || saved.y > 0)) {
+        // Use saved position (skip items stuck at 0,0 — those are stale)
+        card.style.left = saved.x + 'px';
+        card.style.top = saved.y + 'px';
+      } else {
+        // Find the shortest column
+        let shortestCol = 0;
+        for (let i = 1; i < cols; i++) {
+          if (colBottoms[i] < colBottoms[shortestCol]) shortestCol = i;
+        }
+        const x = shortestCol * (CARD_W + GAP);
+        const y = colBottoms[shortestCol];
+        card.style.left = x + 'px';
+        card.style.top = y + 'px';
+        // Estimate card height (will be refined after paint)
+        colBottoms[shortestCol] = y + ROW_H + GAP;
       }
     });
 
-    // Reappend elements in the layout order
-    workspace.layout.forEach(id => {
-      const card = cardMap.get(id);
-      if (card) {
-        grid.appendChild(card);
-        cardMap.delete(id);
-      }
+    // After paint, refine positions for cards that used estimates and save
+    requestAnimationFrame(() => {
+      savePositions();
+      updateHeight(grid);
     });
+  }
 
-    // Any remaining cards that weren't in layout (e.g. newly created collections)
-    cardMap.forEach(card => {
-      grid.appendChild(card);
+  function updateHeight(grid) {
+    if (!grid) grid = document.getElementById('main-grid');
+    if (!grid) return;
+    let max = 0;
+    grid.querySelectorAll(CARD_SEL).forEach(c => {
+      const b = c.offsetTop + c.offsetHeight;
+      if (b > max) max = b;
     });
-
-    // Always make sure the "+ NEW COLLECTION" button is at the end
-    if (addBtn) {
-      grid.appendChild(addBtn);
-    }
-
-    // Ensure all cards have draggable attribute
-    makeDraggable();
+    grid.style.minHeight = Math.max(max + 80, window.innerHeight - 100) + 'px';
   }
 
   /**
-   * Create a placeholder element for drop target indication
+   * Mouse-based free-form drag system
    */
-  function createPlaceholder() {
-    const el = document.createElement('div');
-    el.className = 'drag-placeholder';
-    el.style.cssText = `
-      border: 4px dashed var(--color-blue, #003BFF);
-      background: rgba(0, 59, 255, 0.08);
-      min-height: 80px;
-      transition: none;
-    `;
-    return el;
-  }
-
-  /**
-   * Set up drag and drop event listeners on the grid (event delegation)
-   */
-  function setupDragAndDrop() {
+  function setupDrag() {
     const grid = document.getElementById('main-grid');
     if (!grid) return;
 
-    let dragAllowed = false;
-
-    // Track where the mouse is pressed to determine if dragging should be allowed
     grid.addEventListener('mousedown', (e) => {
-      const isHeader = e.target.closest('.card-header');
-      const isClock = e.target.closest('.widget-clock');
-      
-      // Do not allow dragging from inputs, buttons, links, or labels
-      const tag = e.target.tagName;
-      const isInput = tag === 'INPUT' || tag === 'BUTTON' || tag === 'A' || tag === 'LABEL';
-
-      if ((isHeader || isClock) && !isInput) {
-        dragAllowed = true;
-      } else {
-        dragAllowed = false;
-      }
-    });
-
-    // -- DRAG START --
-    grid.addEventListener('dragstart', (e) => {
-      if (!dragAllowed) {
-        e.preventDefault();
-        return;
-      }
-
-      const card = e.target.closest('.collection-card, .widget-clock, .widget-todo, .widget-ai-sites');
+      const card = e.target.closest(CARD_SEL);
       if (!card) return;
 
-      draggedEl = card;
+      // Allow add-collection-btn drag despite being a <button>
+      const isAddBtn = e.target.closest('.add-collection-btn');
+      const tag = e.target.tagName;
+      const isInteractive = !isAddBtn && (
+        tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' ||
+        tag === 'A' || tag === 'LABEL' ||
+        e.target.closest('button') || e.target.closest('a') ||
+        e.target.closest('input') || e.target.closest('.link-item')
+      );
+      if (isInteractive) return;
 
-      // Small delay so the browser captures the drag image before we style it
-      requestAnimationFrame(() => {
-        card.classList.add('dragging');
-      });
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const cardRect = card.getBoundingClientRect();
+      const offX = e.clientX - cardRect.left;
+      const offY = e.clientY - cardRect.top;
+      let dragging = false;
 
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', card.getAttribute('data-id') || '');
-    });
+      const onMove = (mv) => {
+        const dx = mv.clientX - startX;
+        const dy = mv.clientY - startY;
 
-    // -- DRAG OVER (determines drop position) --
-    grid.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      if (!draggedEl) return;
-      e.dataTransfer.dropEffect = 'move';
-
-      const target = getDragPosition(grid, e.clientX, e.clientY);
-      const addBtn = document.getElementById('add-collection-btn');
-
-      // Remove existing placeholder
-      if (placeholder && placeholder.parentNode) {
-        placeholder.remove();
-      }
-      placeholder = createPlaceholder();
-
-      if (target) {
-        if (target.insertAfter) {
-          grid.insertBefore(placeholder, target.element.nextSibling);
-        } else {
-          grid.insertBefore(placeholder, target.element);
+        if (!dragging && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
+          dragging = true;
+          card.style.zIndex = ++zCounter;
+          card.classList.add('dragging');
+          document.body.style.userSelect = 'none';
+          document.body.style.cursor = 'grabbing';
         }
-      } else if (addBtn) {
-        grid.insertBefore(placeholder, addBtn);
-      } else {
-        grid.appendChild(placeholder);
-      }
-    });
 
-    // -- DRAG LEAVE --
-    grid.addEventListener('dragleave', (e) => {
-      // Only remove placeholder when leaving the grid entirely
-      if (e.relatedTarget && !grid.contains(e.relatedTarget)) {
-        if (placeholder && placeholder.parentNode) {
-          placeholder.remove();
+        if (dragging) {
+          mv.preventDefault();
+          const gr = grid.getBoundingClientRect();
+          let nx = mv.clientX - gr.left - offX + grid.scrollLeft;
+          let ny = mv.clientY - gr.top - offY + grid.scrollTop;
+          nx = Math.max(0, nx);
+          ny = Math.max(0, ny);
+          card.style.left = nx + 'px';
+          card.style.top = ny + 'px';
         }
-      }
-    });
+      };
 
-    // -- DROP --
-    grid.addEventListener('drop', (e) => {
-      e.preventDefault();
-      if (!draggedEl) return;
+      const onUp = () => {
+        if (dragging) {
+          card.classList.remove('dragging');
+          document.body.style.userSelect = '';
+          document.body.style.cursor = '';
+          savePositions();
+          updateHeight(grid);
+        }
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
 
-      // Insert the dragged element where the placeholder is
-      if (placeholder && placeholder.parentNode) {
-        grid.insertBefore(draggedEl, placeholder);
-        placeholder.remove();
-      }
-
-      placeholder = null;
-    });
-
-    // -- DRAG END (always fires, even if drop didn't happen) --
-    grid.addEventListener('dragend', (e) => {
-      if (draggedEl) {
-        draggedEl.classList.remove('dragging');
-      }
-
-      // Clean up placeholder
-      if (placeholder && placeholder.parentNode) {
-        placeholder.remove();
-      }
-
-      draggedEl = null;
-      placeholder = null;
-      saveLayoutOrder();
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
     });
   }
 
-  /**
-   * Determine which card the dragged element is closest to and whether
-   * we should drop before or after it, using 2D Euclidean distance.
-   */
-  function getDragPosition(container, x, y) {
-    const draggableElements = [
-      ...container.querySelectorAll(
-        '.collection-card:not(.dragging), .widget-clock:not(.dragging), .widget-todo:not(.dragging), .widget-ai-sites:not(.dragging)'
-      )
-    ];
-
-    let closestElement = null;
-    let closestDistance = Number.POSITIVE_INFINITY;
-    let insertAfter = false;
-
-    draggableElements.forEach(child => {
-      const box = child.getBoundingClientRect();
-      const centerX = box.left + box.width / 2;
-      const centerY = box.top + box.height / 2;
-      
-      const dx = x - centerX;
-      const dy = y - centerY;
-      const distance = dx * dx + dy * dy;
-
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestElement = child;
-        insertAfter = x > centerX;
-      }
-    });
-
-    return closestElement ? { element: closestElement, insertAfter } : null;
-  }
-
-  /**
-   * Save the current DOM order of cards to layout state
-   */
-  function saveLayoutOrder() {
+  function savePositions() {
     const grid = document.getElementById('main-grid');
     if (!grid || !appState) return;
 
-    const cards = Array.from(grid.querySelectorAll('.collection-card, .widget-clock, .widget-todo, .widget-ai-sites'));
-    const newLayout = cards.map(card => card.getAttribute('data-id')).filter(Boolean);
+    const positions = {};
+    grid.querySelectorAll(CARD_SEL).forEach(card => {
+      const id = card.getAttribute('data-id');
+      if (id) {
+        positions[id] = {
+          x: parseInt(card.style.left) || 0,
+          y: parseInt(card.style.top) || 0
+        };
+      }
+    });
 
-    const workspace = appState.workspaces[appState.activeWorkspace];
-    if (workspace) {
-      workspace.layout = newLayout;
+    const ws = appState.workspaces[appState.activeWorkspace];
+    if (ws) {
+      ws.layout = positions;
       StorageController.saveState(appState);
     }
   }
+
+  // API compatibility
+  function makeDraggable() {}
+  function saveLayoutOrder() { savePositions(); }
 
   return { init, setState, applyLayout, makeDraggable, saveLayoutOrder };
 })();

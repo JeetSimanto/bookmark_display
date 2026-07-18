@@ -80,29 +80,29 @@ const StorageController = (() => {
         }
       });
 
+      // Migrate old array layout to object format
+      if (Array.isArray(ws.layout)) {
+        ws.layout = {};
+      }
+
+      if (!ws.layout || typeof ws.layout !== 'object') {
+        ws.layout = {};
+      }
+
+      // Clean up stale entries (deleted collections)
       const validIds = new Set([
         ...ws.collections.map(c => `collection-${c.id}`),
         "widget-clock",
         "widget-todo",
-        "widget-ai-sites"
+        "widget-ai-sites",
+        "add-collection-btn"
       ]);
 
-      if (!ws.layout) {
-        ws.layout = Array.from(validIds);
-      } else {
-        // Filter out IDs that are no longer valid (e.g. deleted collections)
-        let filteredLayout = ws.layout.filter(id => validIds.has(id));
-        
-        // Append any valid IDs that are missing from the layout (e.g. new collections/widgets)
-        const existingSet = new Set(filteredLayout);
-        validIds.forEach(id => {
-          if (!existingSet.has(id)) {
-            filteredLayout.push(id);
-          }
-        });
-        
-        ws.layout = filteredLayout;
-      }
+      Object.keys(ws.layout).forEach(id => {
+        if (!validIds.has(id)) {
+          delete ws.layout[id];
+        }
+      });
     });
     return state;
   }

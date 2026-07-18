@@ -71,6 +71,7 @@ const BookmarksEngine = (() => {
     const addBtn = document.createElement('button');
     addBtn.className = 'add-collection-btn';
     addBtn.id = 'add-collection-btn';
+    addBtn.setAttribute('data-id', 'add-collection-btn');
     addBtn.innerHTML = '<span style="font-size:1.6rem">+</span> NEW COLLECTION';
     addBtn.addEventListener('click', () => showAddCollectionModal());
 

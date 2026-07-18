@@ -257,6 +257,74 @@ These files define the entire project. Any agent must read them first:
 
 ---
 
+#### PROMPT 9 (User)
+
+> every field should be drag and drop able including ai, clock, task
+
+#### AGENT ACTIONS (Prompt 9)
+
+1. **Expanded draggable areas to widget/card bodies**:
+   - Updated the `mousedown` handler in `js/layout.js` to allow dragging from *anywhere* on a card/widget (`.collection-card`, `.widget-clock`, `.widget-todo`, `.widget-ai-sites`), instead of restricting it to only headers or the clock.
+2. **Created interactive element safety list**:
+   - Kept click actions working normally by preventing drags from triggering on interactive child elements: `INPUT`, `TEXTAREA`, `BUTTON`, `A`, `LABEL`, or elements inside them (such as custom checkboxes, list item delete buttons, or `.link-item` bookmark links).
+3. **Updated Cursor Indicators (`css/main.css`)**:
+   - Applied `cursor: grab` and `:active` `cursor: grabbing` styling directly to the entire card/widget container elements.
+   - Explicitly restored normal/pointer/text cursors for the interactive sub-elements (`input`, `button`, `a`, and `.link-item`) to preserve user interface expectations.
+4. **Verified via automated simulation & visual state**:
+   - Dispatched simulated dragstart/dragover/dragend actions on headers, body elements, list items, and input boxes across all widgets, ensuring correct permission flags are returned.
+
+---
+
+#### PROMPT 10 (User)
+
+> even the new collection field
+
+#### AGENT ACTIONS (Prompt 10)
+
+1. **Made `+ NEW COLLECTION` button a layout participant**:
+   - Added `data-id="add-collection-btn"` attribute to the button element in `js/bookmarks.js`.
+   - Added `"add-collection-btn"` to the `validIds` Set in `js/storage.js` `normalizeState()` so the button's position is persisted across reloads.
+2. **Included in all layout engine selectors (`js/layout.js`)**:
+   - `makeDraggable()`: Added `.add-collection-btn` to the draggable elements selector.
+   - `applyLayout()`: Included `.add-collection-btn` in the card map and removed the forced "always append at end" override.
+   - `getDragPosition()`: Added `:not(.dragging)` selector for the button in 2D Euclidean distance calculations.
+   - `saveLayoutOrder()`: Included in the DOM-order serialization query.
+3. **Fixed button-specific drag blocking**:
+   - The `+ NEW COLLECTION` element is a `<button>`, and the `mousedown` handler was blocking drags from all buttons. Added an exception: if `e.target.closest('.add-collection-btn')` matches, it bypasses the interactive element check.
+   - Also added `.add-collection-btn` to the `dragstart` handler's `closest()` selector.
+4. **Updated CSS (`css/main.css`)**:
+   - Added `.add-collection-btn` to grab/grabbing cursor rules and `.dragging` visual state rules.
+5. **Cache bust**: Bumped `index.html` asset versions from `v=1.0.1` to `v=1.0.2`.
+
+---
+
+#### PROMPT 11 (User)
+
+> i cant drop where i wanted to drop. and i want to drop any field any where i want. just like we can drag any icon on windows desktop if the auto align icon off.
+
+#### AGENT ACTIONS (Prompt 11)
+
+1. **Replaced grid reordering with free-form absolute positioning**:
+   - Completely rewrote `js/layout.js` from HTML5 Drag and Drop API (grid reorder) to a mouse-based free-form positioning system.
+   - Cards now use `position: absolute` with pixel-precise `left`/`top` values. Users can drag any card to any position on the canvas, like desktop icons with auto-align off.
+2. **Mouse-based drag engine**:
+   - `mousedown` → tracks start position and offset within the card.
+   - `mousemove` → after a 5px threshold (to distinguish clicks from drags), moves the card in real-time.
+   - `mouseup` → saves the final position to storage. Click events (e.g. add-collection-btn opening modal) still fire if no drag occurred.
+   - Interactive elements (inputs, buttons, links) are excluded from drag initiation.
+3. **Layout state format migration (`js/storage.js`)**:
+   - Changed layout from an ordered array `["id1", "id2"]` to a position object `{ "id1": { x, y }, "id2": { x, y } }`.
+   - `normalizeState` automatically migrates old array-format layouts to empty objects (positions recalculated on first render).
+4. **CSS changes (`css/main.css`)**:
+   - `.main-grid`: Changed from `display: grid` to `position: relative` with `min-height: calc(100vh - 100px)`.
+   - All cards/widgets: Added `position: absolute; width: 340px`.
+   - Removed `transform` on hover (conflicts with absolute positioning).
+   - Updated `.dragging` visual state: `opacity: 0.7`, elevated `z-index: 9999`.
+5. **Default positioning**: Cards without saved positions are arranged in a grid-like pattern (columns calculated from container width, 340px card width + 24px gap).
+6. **Cache bust**: Bumped asset versions to `v=1.1.0`.
+
+---
+
 ## Current File Structure
 
 ```

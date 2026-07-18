@@ -186,12 +186,46 @@ body {
   border-color: var(--color-blue);
 }
 
-/* ── MAIN GRID (Dense Mosaic) ─────────────────────────────── */
+/* ── MAIN GRID (Free-Form Canvas) ─────────────────────────── */
 .main-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--space-xl);
-  align-items: start;
+  position: relative;
+  min-height: calc(100vh - 100px);
+  padding: var(--space-xl);
+}
+
+/* ── FREE-FORM CARD POSITIONING ───────────────────────────── */
+.collection-card,
+.widget-clock,
+.widget-todo,
+.widget-ai-sites,
+.add-collection-btn {
+  position: absolute;
+  width: 340px;
+  cursor: grab;
+}
+
+.collection-card:active,
+.widget-clock:active,
+.widget-todo:active,
+.widget-ai-sites:active,
+.add-collection-btn:active {
+  cursor: grabbing;
+}
+
+/* Ensure interactive elements keep correct default cursors */
+.collection-card input,
+.widget-todo input,
+.collection-card button,
+.widget-todo button,
+.collection-card a,
+.widget-ai-sites a,
+.link-item {
+  cursor: pointer;
+}
+
+.collection-card input[type="text"],
+.widget-todo input[type="text"] {
+  cursor: text;
 }
 
 /* ── COLLECTION CARD (Bookmark Block) ─────────────────────── */
@@ -199,22 +233,21 @@ body {
   background: var(--color-bg-card);
   border: var(--border-thick);
   box-shadow: var(--shadow-brutal);
-  transition: var(--transition-smooth);
+  transition: box-shadow 0.15s, opacity 0.15s;
   overflow: hidden;
 }
 
 .collection-card.dragging,
 .widget-clock.dragging,
 .widget-todo.dragging,
-.widget-ai-sites.dragging {
-  opacity: 0.5;
-  border-style: dashed;
-  box-shadow: none;
-  transform: scale(0.98);
+.widget-ai-sites.dragging,
+.add-collection-btn.dragging {
+  opacity: 0.7;
+  box-shadow: var(--shadow-brutal-hover);
+  z-index: 9999 !important;
 }
 
 .collection-card:hover {
-  transform: translate(-2px, -2px);
   box-shadow: var(--shadow-brutal-hover);
 }
 
@@ -409,9 +442,8 @@ body {
   border: var(--border-thick);
   border-style: dashed;
   box-shadow: var(--shadow-brutal-sm);
-  cursor: pointer;
+  cursor: grab;
   transition: var(--transition-snap);
-  width: 100%;
   min-height: 120px;
   display: flex;
   align-items: center;
@@ -422,7 +454,6 @@ body {
 .add-collection-btn:hover {
   background: var(--color-green);
   border-style: solid;
-  transform: translate(-2px, -2px);
   box-shadow: var(--shadow-brutal);
 }
 
