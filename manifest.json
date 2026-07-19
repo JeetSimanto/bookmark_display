@@ -5,7 +5,8 @@
   "description": "A maximalist, neo-brutalist New Tab workspace dashboard with bookmarks, widgets, and explosive aesthetics.",
   "permissions": [
     "storage",
-    "favicon"
+    "favicon",
+    "unlimitedStorage"
   ],
   "chrome_url_overrides": {
     "newtab": "index.html"

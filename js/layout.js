@@ -10,7 +10,7 @@ const LayoutEngine = (() => {
   let appState = null;
   let zCounter = 100;
 
-  const CARD_SEL = '.collection-card, .widget-clock, .widget-todo, .widget-ai-sites, .add-collection-btn';
+  const CARD_SEL = '.collection-card, .widget-clock, .widget-todo, .widget-ai-sites, .widget-weather, .add-collection-btn';
   const DRAG_THRESHOLD = 5;
   const CARD_W = 340;
   const GAP = 24;

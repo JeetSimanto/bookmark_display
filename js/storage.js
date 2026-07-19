@@ -55,7 +55,16 @@ const StorageController = (() => {
       { id: 2, text: 'Update documentation', completed: false },
       { id: 3, text: 'Ship v1.0 🚀', completed: false }
     ],
-    settings: {}
+    settings: {
+      backgroundType: 'dot-grid',
+      customBackgroundUrl: '',
+      widgets: {
+        'widget-clock': true,
+        'widget-todo': true,
+        'widget-ai-sites': true,
+        'widget-weather': false
+      }
+    }
   };
 
   /**
@@ -95,6 +104,7 @@ const StorageController = (() => {
         "widget-clock",
         "widget-todo",
         "widget-ai-sites",
+        "widget-weather",
         "add-collection-btn"
       ]);
 
@@ -104,6 +114,19 @@ const StorageController = (() => {
         }
       });
     });
+
+    // Ensure settings exist
+    if (!state.settings) state.settings = {};
+    if (!state.settings.backgroundType) state.settings.backgroundType = 'dot-grid';
+    if (!state.settings.widgets) {
+      state.settings.widgets = {
+        'widget-clock': true,
+        'widget-todo': true,
+        'widget-ai-sites': true,
+        'widget-weather': false
+      };
+    }
+
     return state;
   }
 
